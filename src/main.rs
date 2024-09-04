@@ -10,8 +10,29 @@ fn random_prime() -> u128 {
 }
 
 fn main() {
-    let P  = random_prime(); 
-    let Q = random_prime();
+    let mut rng = thread_rng();
+    let p  = random_prime(); 
+    let q = random_prime();
+    let n = p*q;
+    let theta_of_n = (p-1)*(q-1);
+    let mut e = 0;
+    let k = rng.gen_range(0..340282366920938463463374607431768211455);
+    let public_key;
+    let private_key;
 
-    println!("{}", example);
+    loop{
+        e = rng.gen_range(0..100000);
+
+        if (theta_of_n % e != 0) && (e > 1) && (e < theta_of_n){
+            break;
+        }else{
+            continue;
+        }
+    }
+
+    public_key = n.checked_pow(e as u32);
+    private_key = (k * theta_of_n + 1) / e;
+
+    println!("Public key: {}", public_key);
+    println!("Private key: {}", private_key);
 }
