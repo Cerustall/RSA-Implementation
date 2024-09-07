@@ -10,18 +10,18 @@ fn random_prime() -> Prime {
 }
 
 fn main() {
-    let mut rng = thread_rng();
-    let p  = random_prime(); 
-    let q = random_prime();
-    let n = p*q;
-    let theta_of_n = (p-1)*(q-1);
-    let mut e;
-    let k = rng.gen_range(0..340282366920938463463374607431768211455);
-    let public_key;
-    let private_key;
+    let mut rng: ThreadRng = thread_rng();
+    let p: u128  = random_prime(); 
+    let q: u128 = random_prime();
+    let n: u128 = p*q;
+    let theta_of_n: u128 = (p-1)*(q-1);
+    let mut e: u128;
+    let k: u128 = rng.gen_range(0..100000000000000000);
+    let public_key: u128;
+    let private_key: u128;
 
     loop{
-        e = rng.gen_range(0..100000);
+        e = rng.gen_range(0..1000);
 
         if (theta_of_n % e != 0) && (e > 1) && (e < theta_of_n){
             if n.checked_pow(e as u32).is_some(){
