@@ -1,92 +1,134 @@
 use rand::prelude::*;
 use std::io;
 
-type Prime = u128;
-
+#[derive(Clone)]
 struct Keys{
-    private: u128,
-    public: u128,
-    n: u128,
-    exponent: u128,
+    public: u64,
+    private: u64,
+    n: u64,
+    p: u64,
+    q: u64,
+    e: u64,
+    k: u64,
+    d: u64,
+    theta_of_n: u64
 }
 
-fn random_prime() -> Prime {
-    let primes: [Prime; 10] = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29];
-    let mut rng: ThreadRng = thread_rng();
-    let index: usize = rng.gen_range(0..10);
-    return primes[index];
+fn random_prime() -> u64{
+    let primes: [u64; 10] = [2, 3, 5, 7, 11 ,13 ,17, 19, 23, 29];
+    let mut rng = rand::thread_rng();
+    let selector = rng.gen_range(0..=9);
+    primes[selector]
+}
+
+fn lcm(a: u64, b: u64) -> u64{
+    let max: u64;
+    let mut lcm: u64;
+    if a>b{
+        max = a;
+    }else{
+        max = b;
+    }
+    lcm = max;
+    while (lcm % a != 0) || (lcm % b != 0){
+        lcm += max;
+    }
+    lcm
+}
+
+fn gcd(a: u64, b: u64) -> u64{
+    let mut min: u64;
+    if a<b{
+        min = a;
+    }else{
+        min = b;
+    }
+    while min>0{
+        if (a%min == 0) && (b%min == 0){
+            break;
+        }
+        min -= 1;
+    }
+    min
+}
+
+fn mod_inverse(a: u64, m: u64, keys: Keys) -> u64{
+    let mut mod_inverse: u64 = 0;
+    assert_eq!((keys.e*keys.d)%keys.theta_of_n, 0);
+    mod_inverse = keys.d;
+    mod_inverse
 }
 
 fn gen_keys() -> Keys{
-    let mut keys = Keys{
-        private: 0,
+    let mut rng = rand::thread_rng();
+    let mut e_count = 2;
+    let primes: [u64; 10] = [2, 3, 5, 7, 11 ,13 ,17, 19, 23, 29];
+    let mut keys =  Keys{
         public: 0,
+        private: 0,
         n: 0,
-        exponent: 0,
+        p: 0,
+        q: 0,
+        e: 0,
+        k: 0,
+        d: 0,
+        theta_of_n: 0
     };
-    let mut rng: ThreadRng = thread_rng();
-    let p: u128  = random_prime(); 
-    let q: u128 = random_prime();
-    let n: u128 = p*q;
-    let theta_of_n: u128 = (p-1)*(q-1);
-    let mut e: u128;
-    let k: u128 = rng.gen_range(0..100000000000000000);
 
+    keys.p = random_prime();
+    keys.q = random_prime();
+    keys.n = keys.p*keys.q;
+    keys.theta_of_n = lcm(keys.p-1, keys.q-1);
+    keys.k = rng.gen_range(0..=100);
+
+    keys.e = 3;
     loop{
-        e = rng.gen_range(1..1000);
-
-        if (theta_of_n % e != 0) && (e > 1) && (e < theta_of_n){
-            if n.checked_pow( e as u32).is_some(){
-                break;
-            }
+        if gcd(keys.theta_of_n, keys.e) != 1{
+            keys.e = primes[e_count];
+            e_count += 1;
         }else{
-            continue;
+            break;
         }
     }
-    keys.public = n.checked_pow(e as u32).unwrap();
-    keys.private = (k * theta_of_n + 1) / e;
-    keys.n = n;
-    keys.exponent = e;
+    let _throwaway = keys.q.checked_pow(keys.e.try_into().unwrap());
+    match _throwaway{
+        Some(_throwaway) => keys.public = keys.p * _throwaway,
+        None => println!("Exponent not accetable, triggers overflow on raising q to e. Exponent is {}", keys.e)
+    }
+
+    keys.d = mod_inverse(keys.e, keys.theta_of_n, keys.clone());
+
+    keys.private = (keys.k * keys.theta_of_n + 1)/keys.e;
     keys
 }
 
-fn get_plaintext() -> String {
+fn get_input() -> String{
     let mut input: String = String::new();
     println!("Please enter your text: ");
-    io::stdin().read_line(&mut input).expect("Failed to read text");
+    input.clear();
+    io::stdin().read_line(&mut input).unwrap();
+    print!("Input: {}", input);
     input
 }
 
-fn encrypt(plaintext: String, exponent: u128, n:u128) -> String {
-    let mut ciphertext: String = String::new();
-
-    for char in plaintext.chars(){
-        ciphertext.push(((((char as u128).checked_pow(exponent as u32)).unwrap() % n) as u8 as char));
-    }
-    ciphertext
-}
-
-fn decrypt(ciphertext: String, private_key: u128, n: u128) -> String {
-    let mut plaintext: String = String::new();
-
-    for char in ciphertext.chars(){
-        plaintext.push(((char as u128).checked_pow(private_key as u32).unwrap() % n)as u32 as char);
-    }
-
-    plaintext
-}
-
-fn main() {
+fn main(){
     let keys: Keys = gen_keys();
-    let plaintext: String = get_plaintext();
+    let input: String = get_input();
+    let input_bytes: &[u8] = input.as_bytes();
 
-    println!("Input: {}", plaintext);
+    //Pass input.as_bytes() and keys to fn encrypt(), should pass back &[u8] of encrypted 'characters'
+    
+    //Pass encrypted &[u8] and keys to fn decrypt(), should pass back &[u8] identical to input.as_bytes()
 
-    let ciphertext = encrypt(plaintext, keys.exponent, keys.n);
+    println!("P: {}\nQ: {}\nE: {}\nTheta of n: {}\nD: {}", keys.p, keys.q, keys.e, keys.theta_of_n, keys.d);
+    if gcd(keys.e, keys.theta_of_n) == 1{
+        println!("E and theta of N are coprime.");
+    }
 
-    println!("Ciphertext: {}", ciphertext);
+    print!("Input as bytes: ");
+    for c in input_bytes{
+        print!("{} ", c)
+    }
 
-    let output = decrypt(ciphertext, keys.private, keys.n);
 
-    println!("Decrypted text: {}", output);
 }
