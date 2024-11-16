@@ -52,11 +52,20 @@ fn gcd(a: u64, b: u64) -> u64{
     min
 }
 
-fn mod_inverse(a: u64, m: u64, keys: Keys) -> u64{
-    let mut mod_inverse: u64 = 0;
-    assert_eq!((keys.e*keys.d)%keys.theta_of_n, 0);
-    mod_inverse = keys.d;
-    mod_inverse
+fn mod_inverse(a: u64, m: u64) -> u64{
+let mut multiplicative_inverse: u64 = 1;
+if gcd(a, m) == 1{
+    loop{
+        if (multiplicative_inverse*a)%m != 1{
+            multiplicative_inverse += 1;
+        }else{
+            break;
+        }
+    }
+}else{
+    println!("Multiplicative inverse does not exist for E and theta of N");
+}
+multiplicative_inverse
 }
 
 fn gen_keys() -> Keys{
@@ -96,7 +105,7 @@ fn gen_keys() -> Keys{
         None => println!("Exponent not accetable, triggers overflow on raising q to e. Exponent is {}", keys.e)
     }
 
-    keys.d = mod_inverse(keys.e, keys.theta_of_n, keys.clone());
+    keys.d = mod_inverse(keys.e, keys.theta_of_n);
 
     keys.private = (keys.k * keys.theta_of_n + 1)/keys.e;
     keys
@@ -111,24 +120,105 @@ fn get_input() -> String{
     input
 }
 
+fn encrypt(input_bytes: Vec<u8>, keys: Keys) -> Vec<u64>{
+    let mut ciphertext: Vec<u64> = vec![0,0,0,0];
+    let mut input_bytes_64: Vec<u64> = vec![0,0,0,0];
+    let mut count = 0;
+
+    for i in input_bytes.clone(){
+        input_bytes_64[count] = input_bytes[count] as u64;
+        count += 1;
+    }
+    count = 0;
+
+    println!("*BEFORE ENCRYPTION* Input bytes (u64): ");
+    for c in input_bytes_64.clone(){
+        print!("{} ", c);
+    }
+
+
+    for i in input_bytes_64{
+        let _throwaway = i.checked_pow(keys.e as u32);
+        match _throwaway{
+            Some(_throwaway) => {
+                println!("\n{} ^ {} % {} = {}", i, keys.e, keys.n, _throwaway as u64 % keys.n);
+                ciphertext[count] = _throwaway as u64 % keys.n;
+            }, //ciphertext[count] = _throwaway as u64 % keys.n,
+            None => println!("Encryption error. Overflow likely.")
+        }
+        count += 1;
+    }
+    ciphertext
+}
+
+fn decrypt(ciphertext: Vec<u64>, keys: Keys) -> Vec<u64> {
+    let mut plaintext: Vec<u64> = vec![0,0,0,0];
+    let mut count = 0;
+
+    println!("*BEFORE DECRYPTION* Ciphertext as bytes: ");
+    for c in ciphertext.clone(){
+        print!("{} ", c);
+    }
+
+
+
+
+    for i in ciphertext.clone(){
+        let _throwaway = i.checked_pow(keys.d as u32);
+        match _throwaway{
+            Some(_throwaway) => {
+                println!("\n{} ^ {} % {} = {}", ciphertext[count], keys.d, keys.n, _throwaway % keys.n);
+                plaintext[count] = _throwaway % keys.n
+            },
+            None => println!("\nError in decryption. Overflow likely.")
+        }
+        count += 1;
+    }
+    plaintext
+}
+
 fn main(){
     let keys: Keys = gen_keys();
     let input: String = get_input();
-    let input_bytes: &[u8] = input.as_bytes();
+    let input_bytes: Vec<u8> = input.into_bytes();
+
+    print!("Input as bytes: ");
+    for c in input_bytes.clone(){
+        print!("{} ", c)
+    }
+
+    println!("\nP: {}\nQ: {}\nE: {}\nTheta of n: {}\nD: {}", keys.p, keys.q, keys.e, keys.theta_of_n, keys.d);
+    if gcd(keys.e, keys.theta_of_n) == 1{
+        println!("E and theta of N are coprime.");
+    }
+
+    let ciphertext_bytes: Vec<u64> = encrypt(input_bytes.clone(), keys.clone());
+    let decrypted_bytes: Vec<u64> = decrypt(ciphertext_bytes.clone(), keys.clone());
 
     //Pass input.as_bytes() and keys to fn encrypt(), should pass back &[u8] of encrypted 'characters'
     
     //Pass encrypted &[u8] and keys to fn decrypt(), should pass back &[u8] identical to input.as_bytes()
 
-    println!("P: {}\nQ: {}\nE: {}\nTheta of n: {}\nD: {}", keys.p, keys.q, keys.e, keys.theta_of_n, keys.d);
-    if gcd(keys.e, keys.theta_of_n) == 1{
-        println!("E and theta of N are coprime.");
+   
+
+    
+
+    print!("\nCiphertext as bytes: ");
+    for c in ciphertext_bytes{
+        print!("{} ", c);
     }
 
-    print!("Input as bytes: ");
-    for c in input_bytes{
-        print!("{} ", c)
+    print!("\nDecrypted text as bytes: ");
+    for c in decrypted_bytes{
+        print!("{} ", c);
+    }
+
+    let reconverted_string: Result<String, std::string::FromUtf8Error> = String::from_utf8(input_bytes.clone());
+    match reconverted_string{
+        Ok(reconverted_string) => print!("\nReconverted string: {}", reconverted_string),
+        Err(reconverted_string) => print!("How did we get here?")
     }
 
 
+    
 }
